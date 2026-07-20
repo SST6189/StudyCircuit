@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+  <head>
+    <title>StudyCircuit - Stats</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+
+  <body>
+    <nav>
+      <a href="index.html">Dashboard</a>
+      <a href="tasks.html">Tasks</a>
+      <a href="stats.html" class="active">Stats</a>
+      <a href="apartment.html">Apartment</a>
+      <a href="shop.html">Shop</a>
+    </nav>
+
+    <h1>My Statistics</h1>
+
+    <div class="stats-layout">
+      <div class="stats-left">
+        <div class="productivity-calendar">
+          <h2>Productivity Calendar</h2>
+
+          <div id="calendar-details" class="calendar-details">
+            Hover over a day to see your productivity!
+          </div>
+
+          <h3 id="calendar-month"></h3>
+
+          <div class="calendar-weekdays">
+            <span>Sun</span>
+            <span>Mon</span>
+            <span>Tue</span>
+            <span>Wed</span>
+            <span>Thu</span>
+            <span>Fri</span>
+            <span>Sat</span>
+          </div>
+
+          <div id="calendar-grid"></div>
+        </div>
+      </div>
+
+      <div class="stats-right">
+        <div class="stats-container">
+          <div class="stat-card">
+            <h2>🔥 Current Streak</h2>
+            <p><span id="current-streak">0</span></p>
+          </div>
+
+          <div class="stat-card">
+            <h2>🏆 Longest Streak</h2>
+            <p><span id="longest-streak">0</span></p>
+          </div>
+
+          <div class="stat-card">
+            <h2>⭐ Total XP</h2>
+            <p><span id="total-xp">0</span> XP</p>
+          </div>
+
+          <div class="stat-card">
+            <h2>🪙 Coins Earned</h2>
+            <p><span id="total-coins">0</span></p>
+          </div>
+
+          <div class="stat-card">
+            <h2>Tasks Completed</h2>
+            <p><span id="tasks-completed">0</span></p>
+          </div>
+
+          <div class="stat-card">
+            <h3>Completion Rate</h3>
+            <p><span id="completion-rate">0%</span></p>
+          </div>
+        </div>
+
+        <h2>Difficulty Breakdown</h2>
+
+        <div class="difficulty-cards">
+          <div class="difficulty-card easy-card">
+            <h3>Easy</h3>
+            <p><span id="easy-count">0</span></p>
+          </div>
+
+          <div class="difficulty-card medium-card">
+            <h3>Medium</h3>
+            <p><span id="medium-count">0</span></p>
+          </div>
+
+          <div class="difficulty-card hard-card">
+            <h3>Hard</h3>
+            <p><span id="hard-count">0</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="js/stats.js"></script>
+    <script src="js/spotlight.js"></script>
+    <script src="js/tutorialSteps.js"></script>
+    <script src="js/tutorial.js"></script>
+  </body>
+</html>

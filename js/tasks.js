@@ -3,6 +3,8 @@ const taskDeadline = document.getElementById("task-deadline");
 const taskDifficulty = document.getElementById("task-difficulty");
 const taskList = document.getElementById("task-list");
 const addButton = document.getElementById("add-task");
+const subtaskList = document.getElementById("subtask-list");
+const addSubtaskButton = document.getElementById("add-subtask");
 const coinTotal = document.getElementById("coin-total");
 const levelTotal = document.getElementById("level-total");
 const xpProgress = document.getElementById("xp-progress");
@@ -19,7 +21,7 @@ const acceptSuggestionButton = document.getElementById("accept-suggestion");
 const dismissSuggestionButton = document.getElementById("dismiss-suggestion");
 
 const canModifyTasks = Boolean(
-  taskInput && taskDifficulty && taskList && addButton,
+  taskInput && taskDeadline && taskDifficulty && taskList && addButton,
 );
 const canCompleteTasks = Boolean(taskList);
 const isDashboard =
@@ -179,15 +181,34 @@ function calculateLevelProgress(startXP, startLevel, gainedXP) {
 }
 
 let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+let editingTaskIndex = null;
 let totalXP = parseInt(localStorage.getItem("totalXP")) || 0;
 let currentXP = parseInt(localStorage.getItem("currentXP")) || 0;
 let level = parseInt(localStorage.getItem("level")) || 1;
 let totalCoins = parseInt(localStorage.getItem("totalCoins")) || 0;
 
 if (canModifyTasks) {
-  addButton.addEventListener("click", addTask);
+  addButton.addEventListener("click", () => {
+    if (editingTaskIndex !== null) {
+      saveEditedTask(editingTaskIndex);
+    } else {
+      addTask();
+    }
+  });
   taskInput.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") addTask();
+    if (event.key === "Enter") {
+      if (editingTaskIndex !== null) {
+        saveEditedTask(editingTaskIndex);
+      } else {
+        addTask();
+      }
+    }
+  });
+}
+
+if (addSubtaskButton) {
+  addSubtaskButton.addEventListener("click", () => {
+    createSubtaskInput();
   });
 }
 
@@ -300,9 +321,17 @@ async function analyzeHomeworkImage(file) {
           Subject: ${task.subject || "Unknown"}<br>
           Deadline: ${task.deadline || "No deadline detected"}<br>
           Difficulty: ${task.difficulty || "Medium"}<br>
-          Notes: ${task.notes || "No notes"}<br>
-          Confidence: ${(task.confidence || 0).toFixed(2)}
-        </li>
+        Notes: ${task.notes || "No notes"}<br>
+Subtasks:
+${
+  task.subtasks && task.subtasks.length > 0
+    ? `<ul>${task.subtasks
+        .map((subtask) => `<li>${subtask}</li>`)
+        .join("")}</ul>`
+    : "No subtasks suggested"
+}<br>
+Confidence: ${(task.confidence || 0).toFixed(2)}
+          </li>
       `,
         )
         .join("");
@@ -320,23 +349,42 @@ async function analyzeHomeworkImage(file) {
 function normalizeDeadline(deadline) {
   if (!deadline) return "";
 
+  const original = deadline.trim();
+  const lower = original.toLowerCase();
+
   const today = new Date();
 
-  if (deadline.toLowerCase().includes("today")) {
-    return today.toISOString().split("T")[0];
+  if (lower.includes("today")) {
+    return formatLocalDate(today);
   }
 
-  if (deadline.toLowerCase().includes("tomorrow")) {
+  if (lower.includes("tomorrow")) {
     today.setDate(today.getDate() + 1);
-    return today.toISOString().split("T")[0];
+    return formatLocalDate(today);
   }
 
-  // Already correct format
-  if (/^\d{4}-\d{2}-\d{2}$/.test(deadline)) {
-    return deadline;
+  // Already in correct format: YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(original)) {
+    return original;
   }
 
+  // Handle formats like "July 18, 2026" or "07/18/2026"
+  const parsedDate = new Date(original);
+
+  if (!isNaN(parsedDate.getTime())) {
+    return formatLocalDate(parsedDate);
+  }
+
+  console.warn("Could not normalize deadline:", deadline);
   return "";
+}
+
+function formatLocalDate(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
 }
 
 function acceptPendingSuggestion() {
@@ -348,11 +396,20 @@ function acceptPendingSuggestion() {
       (suggestion.difficulty || "medium").slice(1).toLowerCase();
 
     tasks.push({
+      id: crypto.randomUUID(),
       text: suggestion.title || "Suggested homework task",
       difficulty,
       xp: XP[difficulty] || 10,
       coins: COINS[difficulty] || 5,
       deadline: normalizeDeadline(suggestion.deadline),
+      subtasks: (suggestion.subtasks || []).map((subtask) => ({
+        id: crypto.randomUUID(),
+        text: subtask,
+        completed: false,
+      })),
+      notes: suggestion.notes || "",
+      subject: suggestion.subject || "",
+      completed: false,
     });
   });
 
@@ -395,6 +452,78 @@ function hasMeaningfulText(value) {
   return /[A-Za-z0-9\u00C0-\u024F\u1E00-\u1EFF]/.test(value);
 }
 
+function createSubtaskInput(value = "") {
+  const row = document.createElement("div");
+  row.className = "subtask-row";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "Subtask...";
+  input.value = value;
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.textContent = "✕";
+
+  removeButton.addEventListener("click", () => {
+    row.remove();
+  });
+
+  row.appendChild(input);
+  row.appendChild(removeButton);
+
+  subtaskList.appendChild(row);
+}
+
+async function analyzeCalendarEvent(event) {
+  const response = await fetch("http://localhost:3000/analyze-calendar-event", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      title: event.summary || "Calendar Event",
+      date: event.start.date || event.start.dateTime || "",
+      description: event.description || "",
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Could not analyze calendar event.");
+  }
+
+  const data = await response.json();
+
+  return data;
+}
+
+function addCalendarTask(event, aiSuggestion) {
+  const task = {
+    id: crypto.randomUUID(),
+    text: aiSuggestion.title,
+    difficulty: aiSuggestion.difficulty,
+    xp: XP[aiSuggestion.difficulty],
+    coins: COINS[aiSuggestion.difficulty],
+    deadline: aiSuggestion.deadline,
+    subtasks: (aiSuggestion.subtasks || []).map((subtask) => ({
+      id: crypto.randomUUID(),
+      text: subtask,
+      completed: false,
+    })),
+    completed: false,
+    source: "Google Calendar",
+    calendarEventId: event.id,
+  };
+
+  tasks.push(task);
+
+  localStorage.setItem("tasks", JSON.stringify(tasks));
+
+  renderTasks();
+
+  alert("Calendar task added!");
+}
+
 function addTask() {
   const text = taskInput.value.trim();
   const deadline = taskDeadline ? taskDeadline.value : "";
@@ -404,13 +533,77 @@ function addTask() {
   const xp = XP[difficulty];
   const coins = COINS[difficulty];
 
-  tasks.push({ text, difficulty, xp, coins, deadline });
+  const subtasks = [];
+
+  document.querySelectorAll(".subtask-row input").forEach((input) => {
+    const text = input.value.trim();
+
+    if (text) {
+      subtasks.push({
+        id: crypto.randomUUID(),
+        text,
+        completed: false,
+      });
+    }
+  });
+
+  tasks.push({
+    id: crypto.randomUUID(),
+    text,
+    difficulty,
+    xp,
+    coins,
+    deadline,
+    subtasks,
+    completed: false,
+  });
   localStorage.setItem("tasks", JSON.stringify(tasks));
 
   renderTasks();
   taskInput.value = "";
   if (taskDeadline) taskDeadline.value = "";
   taskInput.focus();
+  subtaskList.innerHTML = "";
+}
+
+function saveEditedTask(index) {
+  const oldTask = tasks[index];
+
+  const subtasks = [];
+
+  document.querySelectorAll(".subtask-row input").forEach((input, i) => {
+    const text = input.value.trim();
+
+    if (text) {
+      const oldSubtask = oldTask.subtasks?.[i];
+
+      subtasks.push({
+        id: oldSubtask ? oldSubtask.id : crypto.randomUUID(),
+        text,
+        completed: oldSubtask ? oldSubtask.completed : false,
+      });
+    }
+  });
+
+  tasks[index] = {
+    ...oldTask,
+    text: taskInput.value.trim(),
+    deadline: taskDeadline.value,
+    difficulty: taskDifficulty.value,
+    xp: XP[taskDifficulty.value],
+    coins: COINS[taskDifficulty.value],
+    subtasks,
+  };
+
+  localStorage.setItem("tasks", JSON.stringify(tasks));
+
+  renderTasks();
+
+  taskInput.value = "";
+  taskDeadline.value = "";
+  subtaskList.innerHTML = "";
+  addButton.textContent = "Add Task";
+  editingTaskIndex = null;
 }
 
 function isUpcomingTask(task) {
@@ -465,9 +658,11 @@ function updateXPProgress() {
 
 function renderTasks() {
   taskList.innerHTML = "";
+  const activeTasks = tasks
+    .map((task, index) => ({ task, originalIndex: index }))
+    .filter(({ task }) => !task.completed);
   const visibleTasks = isDashboard
-    ? tasks
-        .map((task, index) => ({ task, originalIndex: index }))
+    ? activeTasks
         .filter(({ task }) => isUpcomingTask(task))
         .sort((a, b) => {
           const [yA, mA, dA] = a.task.deadline.split("-").map(Number);
@@ -475,15 +670,15 @@ function renderTasks() {
           return new Date(yA, mA - 1, dA) - new Date(yB, mB - 1, dB);
         })
         .slice(0, 5)
-    : tasks
-        .map((task, index) => ({ task, originalIndex: index }))
-        .sort((a, b) => {
-          if (!a.task.deadline) return 1;
-          if (!b.task.deadline) return -1;
-          const [yA, mA, dA] = a.task.deadline.split("-").map(Number);
-          const [yB, mB, dB] = b.task.deadline.split("-").map(Number);
-          return new Date(yA, mA - 1, dA) - new Date(yB, mB - 1, dB);
-        });
+    : activeTasks.sort((a, b) => {
+        if (!a.task.deadline) return 1;
+        if (!b.task.deadline) return -1;
+
+        const [yA, mA, dA] = a.task.deadline.split("-").map(Number);
+        const [yB, mB, dB] = b.task.deadline.split("-").map(Number);
+
+        return new Date(yA, mA - 1, dA) - new Date(yB, mB - 1, dB);
+      });
 
   if (isDashboard && visibleTasks.length === 0) {
     const emptyMessage = document.createElement("li");
@@ -543,11 +738,24 @@ function renderTasks() {
       const doneButton = document.createElement("button");
       doneButton.type = "button";
       doneButton.className = "task-complete-button";
-      doneButton.textContent = "☐";
+      doneButton.textContent = task.completed ? "☑" : "☐";
       doneButton.setAttribute("aria-label", "Mark task complete");
       doneButton.setAttribute("aria-pressed", "false");
+
+      if (task.completed) {
+        doneButton.classList.add("completed");
+        doneButton.disabled = true;
+        doneButton.setAttribute("aria-pressed", "true");
+      }
+
       doneButton.addEventListener("click", () => {
         if (doneButton.disabled) return;
+        // Update daily streak
+        const currentStreak = updateStreak();
+        updateStats(task);
+        updateProductivityCalendar();
+
+        console.log("🔥 Current streak:", currentStreak);
         doneButton.textContent = "☑";
         doneButton.classList.add("completed");
         doneButton.setAttribute("aria-pressed", "true");
@@ -567,8 +775,9 @@ function renderTasks() {
 
         const finishCompletion = () => {
           const taskIndex = tasks.findIndex((taskEntry) => taskEntry === task);
+
           if (taskIndex >= 0) {
-            tasks.splice(taskIndex, 1);
+            tasks[taskIndex].completed = true;
           }
           localStorage.setItem("tasks", JSON.stringify(tasks));
           localStorage.setItem("totalXP", totalXP);
@@ -576,10 +785,17 @@ function renderTasks() {
           localStorage.setItem("level", level);
           localStorage.setItem("totalCoins", totalCoins);
           renderTasks();
-          if (coinTotal) coinTotal.textContent = totalCoins;
-          updateXPProgress();
-        };
 
+          if (coinTotal) coinTotal.textContent = totalCoins;
+
+          updateXPProgress();
+
+          const streakDisplay = document.getElementById("streak-total");
+
+          if (streakDisplay && typeof getStreak === "function") {
+            streakDisplay.textContent = getStreak();
+          }
+        };
         try {
           if (earnedXP === 0) {
             totalCoins += earnedCoins;
@@ -642,17 +858,84 @@ function renderTasks() {
 
     li.appendChild(rowContent);
 
+    if (task.subtasks && task.subtasks.length > 0) {
+      const subtaskContainer = document.createElement("div");
+      subtaskContainer.className = "subtask-container";
+
+      task.subtasks.forEach((subtask) => {
+        const subtaskRow = document.createElement("div");
+        subtaskRow.className = "subtask-item";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = subtask.completed;
+
+        checkbox.addEventListener("change", () => {
+          subtask.completed = checkbox.checked;
+
+          const allSubtasksDone = task.subtasks.every(
+            (subtask) => subtask.completed,
+          );
+
+          localStorage.setItem("tasks", JSON.stringify(tasks));
+
+          if (allSubtasksDone) {
+            const parentCompleteButton = li.querySelector(
+              ".task-complete-button",
+            );
+
+            if (parentCompleteButton) {
+              parentCompleteButton.click();
+              return;
+            }
+          }
+
+          renderTasks();
+        });
+
+        const text = document.createElement("span");
+        text.textContent = subtask.text;
+
+        if (subtask.completed) {
+          text.style.textDecoration = "line-through";
+          text.style.opacity = "0.6";
+        }
+
+        subtaskRow.appendChild(checkbox);
+        subtaskRow.appendChild(text);
+
+        subtaskContainer.appendChild(subtaskRow);
+      });
+
+      li.appendChild(subtaskContainer);
+    }
+
     if (canModifyTasks) {
       const editButton = document.createElement("button");
       editButton.type = "button";
       editButton.textContent = "Edit";
       editButton.addEventListener("click", () => {
+        editingTaskIndex = originalIndex;
+
         taskInput.value = task.text;
-        if (taskDeadline) taskDeadline.value = task.deadline || "";
+
+        if (taskDeadline) {
+          taskDeadline.value = task.deadline || "";
+        }
+
         taskDifficulty.value = task.difficulty;
-        tasks.splice(originalIndex, 1);
-        localStorage.setItem("tasks", JSON.stringify(tasks));
-        renderTasks();
+
+        subtaskList.innerHTML = "";
+
+        if (task.subtasks) {
+          task.subtasks.forEach((subtask) => {
+            createSubtaskInput(subtask.text);
+          });
+        }
+
+        addButton.textContent = "Save";
+
+        taskInput.focus();
       });
 
       const deleteButton = document.createElement("button");
@@ -670,7 +953,339 @@ function renderTasks() {
     taskList.appendChild(li);
   });
 }
+function updateStats(task) {
+  let stats = JSON.parse(localStorage.getItem("stats")) || {
+    tasksCompleted: 0,
+    easy: 0,
+    medium: 0,
+    hard: 0,
+    longestStreak: 0,
+  };
+
+  stats.tasksCompleted++;
+
+  if (task.difficulty === "Easy") {
+    stats.easy++;
+  }
+
+  if (task.difficulty === "Medium") {
+    stats.medium++;
+  }
+
+  if (task.difficulty === "Hard") {
+    stats.hard++;
+  }
+
+  const currentStreak = Number(localStorage.getItem("streak")) || 0;
+
+  if (currentStreak > stats.longestStreak) {
+    stats.longestStreak = currentStreak;
+  }
+
+  localStorage.setItem("stats", JSON.stringify(stats));
+}
+
+function updateProductivityCalendar() {
+  let calendar = JSON.parse(localStorage.getItem("calendar")) || {};
+
+  const today = new Date().toISOString().split("T")[0];
+
+  if (!calendar[today]) {
+    calendar[today] = 0;
+  }
+
+  calendar[today]++;
+
+  localStorage.setItem("calendar", JSON.stringify(calendar));
+}
 
 renderTasks();
 if (coinTotal) coinTotal.textContent = totalCoins;
 updateXPProgress();
+
+const streakDisplay = document.getElementById("streak-total");
+
+if (streakDisplay && typeof getStreak === "function") {
+  const streak = getStreak();
+
+  streakDisplay.textContent = streak;
+
+  const streakWord = document.getElementById("streak-word");
+
+  if (streakWord) {
+    streakWord.textContent = streak === 1 ? "day" : "days";
+  }
+}
+
+/* ==========================================================
+   GOOGLE CALENDAR
+========================================================== */
+
+const CLIENT_ID =
+  "1037059700810-klmvk9nh9tv06v93nbmpf06h8un3ce4a.apps.googleusercontent.com";
+
+const DISCOVERY_DOC =
+  "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest";
+
+const SCOPES = "https://www.googleapis.com/auth/calendar.readonly";
+
+const connectCalendarButton = document.getElementById("connect-calendar");
+const calendarStatus = document.getElementById("calendar-status");
+const calendarEvents = document.getElementById("calendar-events");
+const calendarEventList = document.getElementById("calendar-event-list");
+
+const suggestCalendarTasksButton = document.getElementById(
+  "suggest-calendar-tasks",
+);
+
+let accessToken = localStorage.getItem("googleAccessToken") || null;
+
+function restoreGoogleCalendarSession() {
+  const savedToken = localStorage.getItem("googleAccessToken");
+
+  if (savedToken) {
+    accessToken = savedToken;
+
+    gapi.client.setToken({
+      access_token: savedToken,
+    });
+
+    localStorage.setItem("googleCalendarConnected", "true");
+
+    calendarStatus.textContent = "✅ Connected";
+
+    return true;
+  }
+
+  return false;
+}
+
+let calendarEventsData = [];
+let pendingCalendarSuggestions =
+  JSON.parse(localStorage.getItem("calendarSuggestions")) || [];
+
+function calendarTaskAlreadyAdded(eventId) {
+  return tasks.some((task) => task.calendarEventId === eventId);
+}
+
+async function initializeGoogleCalendar() {
+  await new Promise((resolve) => gapi.load("client", resolve));
+
+  await gapi.client.init({
+    discoveryDocs: [DISCOVERY_DOC],
+  });
+}
+
+async function connectGoogleCalendar() {
+  const tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+
+    callback: async (response) => {
+      if (response.error) {
+        console.error(response);
+        return;
+      }
+
+      accessToken = response.access_token;
+
+      localStorage.setItem("googleAccessToken", accessToken);
+
+      gapi.client.setToken({
+        access_token: accessToken,
+      });
+
+      localStorage.setItem("googleCalendarConnected", "true");
+
+      calendarStatus.textContent = "✅ Connected";
+    },
+  });
+
+  tokenClient.requestAccessToken();
+}
+
+async function loadUpcomingEvents() {
+  try {
+    const response = await gapi.client.calendar.events.list({
+      calendarId: "primary",
+      timeMin: new Date().toISOString(),
+      showDeleted: false,
+      singleEvents: true,
+      maxResults: 10,
+      orderBy: "startTime",
+    });
+
+    calendarEventList.innerHTML = "";
+
+    const events = response.result.items;
+
+    calendarEventsData = events;
+
+    const uniqueEvents = events.filter(
+      (event, index, self) =>
+        index === self.findIndex((e) => e.id === event.id),
+    );
+
+    localStorage.setItem("calendarEvents", JSON.stringify(uniqueEvents));
+
+    localStorage.setItem("calendarEvents", JSON.stringify(events));
+    if (!events || events.length === 0) {
+      calendarEventList.innerHTML = "<li>No upcoming calendar events.</li>";
+      calendarEvents.hidden = false;
+      return;
+    }
+
+    events.forEach((event) => {
+      const li = document.createElement("li");
+
+      const start = event.start.dateTime || event.start.date || "";
+
+      const aiSuggestion = pendingCalendarSuggestions.find(
+        (item) => item.event.id === event.id,
+      );
+
+      const suggestion = aiSuggestion?.suggestion;
+
+      li.innerHTML = `
+<strong>📅 ${event.summary || "Untitled Event"}</strong><br>
+
+Deadline:
+${suggestion?.deadline || new Date(start).toLocaleString()}
+
+<br>
+
+Difficulty:
+${suggestion?.difficulty || "Analyzing..."}
+
+<br><br>
+
+💡 Suggested Study Task:
+<br>
+${suggestion?.title || "Generating suggestion..."}
+
+<br><br>
+
+Subtasks:
+${
+  suggestion?.subtasks?.length
+    ? `<ul>
+        ${suggestion.subtasks.map((s) => `<li>${s}</li>`).join("")}
+       </ul>`
+    : "None"
+}
+
+<br>
+
+<button class="calendar-add-task">
+  Add Task
+</button>
+`;
+
+      const addButton = li.querySelector(".calendar-add-task");
+
+      addButton.addEventListener("click", () => {
+        const suggestion = pendingCalendarSuggestions.find(
+          (item) => item.event.id === event.id,
+        );
+
+        if (!suggestion) {
+          alert("Please generate study suggestions first.");
+          return;
+        }
+
+        addCalendarTask(suggestion.event, suggestion.suggestion);
+
+        addButton.remove();
+
+        const successMessage = document.createElement("div");
+
+        successMessage.innerHTML = `
+    <strong>✅ Added to StudyCircuit!</strong>
+    <br>
+    Study for ${event.summary || "Calendar Event"}
+    <br><br>
+    <a href="tasks.html">
+      View Tasks →
+    </a>
+  `;
+
+        successMessage.className = "calendar-success-message";
+
+        li.appendChild(successMessage);
+
+        li.classList.add("calendar-added");
+      });
+
+      calendarEventList.appendChild(li);
+    });
+
+    calendarEvents.hidden = false;
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+if (connectCalendarButton) {
+  initializeGoogleCalendar().then(() => {
+    restoreGoogleCalendarSession();
+  });
+
+  connectCalendarButton.addEventListener("click", () => {
+    connectGoogleCalendar();
+  });
+}
+
+if (suggestCalendarTasksButton) {
+  suggestCalendarTasksButton.addEventListener("click", () => {
+    suggestCalendarTasks();
+  });
+}
+
+async function suggestCalendarTasks() {
+  if (!localStorage.getItem("googleCalendarConnected")) {
+    alert("Please connect Google Calendar first.");
+    return;
+  }
+
+  // If suggestions already exist, just show them again
+  if (pendingCalendarSuggestions.length > 0) {
+    console.log("Showing saved AI suggestions");
+
+    await loadUpcomingEvents();
+    return;
+  }
+
+  // Otherwise generate new suggestions
+  if (!accessToken) {
+    alert("Please reconnect Google Calendar.");
+    return;
+  }
+
+  await loadUpcomingEvents();
+
+  pendingCalendarSuggestions = [];
+
+  for (const event of calendarEventsData) {
+    const suggestion = await analyzeCalendarEvent(event);
+
+    pendingCalendarSuggestions.push({
+      event,
+      suggestion,
+    });
+  }
+
+  // Save AI suggestions
+  localStorage.setItem(
+    "calendarSuggestions",
+    JSON.stringify(pendingCalendarSuggestions),
+  );
+
+  // Refresh display with AI data
+  await loadUpcomingEvents();
+
+  console.log("AI Suggestions generated:", pendingCalendarSuggestions);
+}
+
+if (localStorage.getItem("googleCalendarConnected")) {
+  calendarStatus.textContent = "✅ Connected";
+}

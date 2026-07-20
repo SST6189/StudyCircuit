@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+  <head>
+    <title>StudyCircuit - Tasks</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body class="tasks-page">
+    <nav>
+      <a href="index.html">Dashboard</a>
+      <a href="tasks.html" class="active">Tasks</a>
+      <a href="stats.html">Stats</a>
+      <a href="apartment.html">Apartment</a>
+      <a href="shop.html">Shop</a>
+    </nav>
+
+    <h1>All Tasks</h1>
+    <section class="todo-list">
+      <div class="smart-tools">
+        <h2>Smart Tools</h2>
+        <div class="tool-section">
+          <button class="tool-toggle">AI Homework Assistant</button>
+
+          <div class="tool-content">
+            <div class="ai-photo-panel">
+              <h3>Homework Photo Assistant</h3>
+
+              <p>
+                Take a photo or upload homework to get a suggested task you can
+                review.
+              </p>
+
+              <div class="photo-controls">
+                <label class="photo-button" for="homework-photo-input">
+                  Take / Upload Photo
+                </label>
+
+                <input
+                  id="homework-photo-input"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                />
+
+                <button id="analyze-homework">Suggest Task</button>
+              </div>
+
+              <div
+                id="photo-preview-wrapper"
+                class="photo-preview-wrapper"
+                hidden
+              >
+                <img id="homework-photo-preview" alt="Homework preview" />
+              </div>
+
+              <p id="ai-status"></p>
+
+              <div id="ai-suggestion" hidden>
+                <h4>Suggested Task</h4>
+
+                <p id="suggestion-summary"></p>
+
+                <div id="suggestion-details"></div>
+
+                <div class="suggestion-actions">
+                  <button id="accept-suggestion">Add to Tasks</button>
+                  <button id="dismiss-suggestion" class="secondary">
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tool-section">
+          <button class="tool-toggle">Google Calendar</button>
+
+          <div class="tool-content">
+            <div class="calendar-panel">
+              <h3>Google Calendar</h3>
+
+              <p>
+                Connect your Google Calendar to receive suggested study tasks
+                based on upcoming events and deadlines.
+              </p>
+
+              <button id="connect-calendar">Connect Google Calendar</button>
+
+              <button id="suggest-calendar-tasks">Suggest Tasks</button>
+
+              <p id="calendar-status">Not Connected</p>
+
+              <div id="calendar-events" hidden>
+                <h4>Upcoming Calendar Events</h4>
+                <ul id="calendar-event-list"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tool-section">
+          <button class="tool-toggle">AI Study Planner</button>
+
+          <div class="tool-content">
+            <div class="study-planner-panel">
+              <p>
+                Let AI create a personalized study schedule using your tasks and
+                Google Calendar events.
+              </p>
+
+              <div class="planner-actions">
+                <button id="generate-study-plan">Generate Plan</button>
+
+                <button id="toggle-study-plan" class="secondary" hidden>
+                  Hide Plan
+                </button>
+              </div>
+
+              <p id="study-plan-status"></p>
+
+              <div id="study-plan-container" hidden>
+                <div class="study-plan-header">
+                  <h4>Your Weekly Study Plan</h4>
+
+                  <div class="study-plan-buttons">
+                    <button id="save-study-plan">💾</button>
+                    <button id="delete-study-plan" class="danger">🗑</button>
+                  </div>
+                </div>
+
+                <div id="study-plan-results"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <h2>To-Do</h2>
+      <div class="task-form">
+        <input id="new-task" type="text" placeholder="Add a task..." />
+        <label class="task-label" for="task-deadline">Deadline</label>
+        <input id="task-deadline" type="date" />
+        <select id="task-difficulty">
+          <option value="Easy" selected>Easy</option>
+          <option value="Medium">Medium</option>
+          <option value="Hard">Hard</option>
+        </select>
+
+        <div class="subtask-section">
+          <div id="subtask-list"></div>
+        </div>
+
+        <div class="task-button-row">
+          <button id="add-subtask" type="button">+ Add Subtask</button>
+          <button id="add-task" type="button">Add</button>
+        </div>
+      </div>
+      <ul id="task-list"></ul>
+      <div class="xp-progress-wrapper">
+        <div class="xp-progress-label">
+          <span>XP Progress</span>
+          <span id="xp-progress">0/100</span>
+        </div>
+        <div class="xp-progress-bar" aria-hidden="true">
+          <div id="xp-progress-fill" class="xp-progress-fill"></div>
+        </div>
+      </div>
+      <p>Total Coins: <span id="coin-total">0</span></p>
+    </section>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+
+    <script src="js/streak.js"></script>
+    <script src="js/tasks.js?v=20260703"></script>
+    <script src="js/studyPlanner.js"></script>
+    <script src="js/smartTools.js"></script>
+    <script src="js/spotlight.js"></script>
+    <script src="js/tutorialSteps.js"></script>
+    <script src="js/tutorial.js"></script>
+  </body>
+</html>

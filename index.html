@@ -6,10 +6,11 @@
   </head>
   <body class="dashboard">
     <nav>
-      <a href="html/index.html" class="active">Dashboard</a>
-      <a href="html/tasks.html">Tasks</a>
-      <a href="html/apartment.html">Apartment</a>
-      <a href="html/shop.html">Shop</a>
+      <a href="index.html" class="active">Dashboard</a>
+      <a href="tasks.html">Tasks</a>
+      <a href="stats.html">Stats</a>
+      <a href="apartment.html">Apartment</a>
+      <a href="shop.html">Shop</a>
     </nav>
 
     <h1>Dashboard</h1>
@@ -43,10 +44,15 @@
           </div>
         </div>
         <p class="coins-summary">Total Coins: <span id="coin-total">0</span></p>
+        <p class="streak-summary">Streak: <span id="streak-total">0</span> <span id="streak-word">days</span></p>
       </div>
     </div>
 
+    <script src="js/streak.js"></script>
     <script src="js/tasks.js"></script>
     <script src="js/avatarPicker.js"></script>
+    <script src="js/spotlight.js"></script>
+    <script src="js/tutorialSteps.js"></script>
+    <script src="js/tutorial.js"></script>
   </body>
 </html>
