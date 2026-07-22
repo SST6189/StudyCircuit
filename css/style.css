@@ -1616,11 +1616,9 @@ body.tasks-page .todo-list {
   width: calc(100% - 40px);
   margin: 30px auto;
   padding: 18px;
-
   background: #ffffff;
   border: 1px solid #ddd;
   border-radius: 14px;
-
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
 }
 
@@ -1633,33 +1631,23 @@ body.tasks-page .todo-list {
 
 .tool-section {
   margin-bottom: 12px;
-
   border: 1px solid #ddd;
   border-radius: 10px;
-
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Expand/collapse buttons */
 
 .tool-toggle {
   width: 100%;
-
   padding: 14px 16px;
-
   border: none;
-
   background: #fafafa;
-
   color: rgb(201, 142, 240);
-
   font-size: 1rem;
   font-weight: 600;
-
   text-align: left;
-
   cursor: pointer;
-
   transition: 0.2s ease;
 }
 
@@ -1677,20 +1665,17 @@ body.tasks-page .todo-list {
 
 .tool-content {
   max-height: 0;
-
   overflow: hidden;
-
   padding: 0 16px;
-
   background: white;
-
   transition:
     max-height 0.3s ease,
     padding 0.3s ease;
 }
 
 .tool-content.open {
-  max-height: 1000px;
+  max-height: none;
+  overflow: visible;
   padding: 16px;
 }
 
@@ -1700,14 +1685,9 @@ body.tasks-page .todo-list {
 .calendar-panel,
 .study-planner-panel {
   margin: 0;
-
   background: linear-gradient(135deg, #fcf8ff, #f6edff);
-
   border-radius: 12px;
-
   padding: 16px;
-
-  box-shadow: none;
 }
 
 /* Consistent buttons */
