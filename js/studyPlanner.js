@@ -148,19 +148,22 @@ async function generateStudyPlan() {
     console.log("CALENDAR EVENTS:", calendarEvents);
     console.log("FREE TIME:", freeTime);
 
-    const response = await fetch("http://localhost:3000/generate-study-plan", {
-      method: "POST",
+    const response = await fetch(
+      "https://studycircuit-ai.onrender.com/generate-study-plan",
+      {
+        method: "POST",
 
-      headers: {
-        "Content-Type": "application/json",
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          tasks: incompleteTasks,
+          calendarEvents,
+          freeTime,
+        }),
       },
-
-      body: JSON.stringify({
-        tasks: incompleteTasks,
-        calendarEvents,
-        freeTime,
-      }),
-    });
+    );
 
     if (!response.ok) throw new Error("AI could not generate a study plan.");
 

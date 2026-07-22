@@ -268,16 +268,19 @@ async function analyzeHomeworkImage(file) {
 
   try {
     const imageBase64 = await readFileAsBase64(file);
-    const response = await fetch("http://localhost:3000/scan-homework", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const response = await fetch(
+      "https://studycircuit-ai.onrender.com/scan-homework",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          imageBase64,
+          mimeType: file.type || "image/jpeg",
+        }),
       },
-      body: JSON.stringify({
-        imageBase64,
-        mimeType: file.type || "image/jpeg",
-      }),
-    });
+    );
     const responseText = await response.text();
     let data = {};
 
@@ -476,17 +479,20 @@ function createSubtaskInput(value = "") {
 }
 
 async function analyzeCalendarEvent(event) {
-  const response = await fetch("http://localhost:3000/analyze-calendar-event", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  const response = await fetch(
+    "https://studycircuit-ai.onrender.com/analyze-calendar-event",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: event.summary || "Calendar Event",
+        date: event.start.date || event.start.dateTime || "",
+        description: event.description || "",
+      }),
     },
-    body: JSON.stringify({
-      title: event.summary || "Calendar Event",
-      date: event.start.date || event.start.dateTime || "",
-      description: event.description || "",
-    }),
-  });
+  );
 
   if (!response.ok) {
     throw new Error("Could not analyze calendar event.");
